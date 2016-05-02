@@ -43,11 +43,15 @@ class DeterministicFiniteAutomaton(object):
     def accept_states(self, value):
         self._accept_states = value
 
-    def transition(self, state, symbol):
-        return self._transition_function.get((state, symbol), None)
+    def transition(self, state, symbol, default=None):
+        return self._transition_function.get((state, symbol), default)
 
-    def add_transition(self, state, symbol, out):
-        self._transition_function[(state, symbol)] = out
+    def add_transition(self, state, symbol, t_state):
+        self._transition_function[(state, symbol)] = t_state
+
+    def add_multisymbol_transition(self, state, symbols, t_state):
+        for symbol in symbols:
+            self.add_transition(state, symbol, t_state)
 
     @property
     def alphabet(self):
@@ -108,11 +112,25 @@ class NondeterministicFiniteAutomaton(DeterministicFiniteAutomaton):
             '*' if self.accepting else ''
         )
 
+    def add_transition(self, state, symbol, t_state):
+        self.transition(
+            state,
+            symbol,
+            []
+        ).append(t_state)
+
+    def add_transitions(self, state, symbol, t_states):
+        self.transition(
+            state,
+            symbol,
+            []
+        ).extend(t_states)
+
     def _transition_set(self, states, symbol):
         delta = self.transition
         return reduce(
             lambda all_states, q_states: all_states | set(q_states),
-            [delta(q, symbol) for q in states if delta(q, symbol)],
+            [delta(q, symbol, []) for q in states],
             set(),
         )
 
@@ -145,7 +163,13 @@ class EpsilonNondeterministicFiniteAutomaton(NondeterministicFiniteAutomaton):
         self.current_state = self.epsilon_closure(set([self.start_state]))
 
     def epsilon_closure(self, states):
-        return states | self._transition_set(states, None)
+        state_list = list(states)
+        state_set = set(states)
+        for state in state_list:
+            e_trans = set(self.transition(state, None, []))
+            state_list += list(e_trans - state_set)
+            state_set |= e_trans
+        return state_set
 
     def read(self, symbol):
         self.current_state = self.epsilon_closure(
