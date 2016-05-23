@@ -57,7 +57,7 @@ class DeterministicFiniteAutomaton(object):
     def alphabet(self):
         '''The alphabet over which the automaton accepts languages'''
         return reduce(
-            lambda  alpha, (q, x): alpha | set([x]) if x else alpha,
+            lambda alphabet, (_, x): alphabet | set([x]) if x else alphabet,
             self._transition_function.iterkeys(),
             set()
         )
